@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebWorkers QR Code Scan</title>
+    <script type="text/javascript" src="qrcode.js"></script>
+</head>
+<body>
+<div> - QR Code process using WebWorker - </div>
+<div id="message"></div>
+<video></video>
+
+
+<script>
+    var video, ctx;
+    // check if the browser supports getUSerMedia, web-workers and requestAnimationFrame ...
+    if (navigator.webkitGetUserMedia && typeof window.requestAnimationFrame === 'function' && typeof window.Worker === 'function') {
+
+        function checkForQRCodes(video, callback) {
+            var worker = new Worker("webWorker.js"),
+                canvas = document.createElement('canvas');
+
+            function process() {
+                // if we have video start the processing otherwise try to get image from it
+                if (video.videoWidth === 0) {
+                    return requestAnimationFrame(process);
+                }
+                var width  = video.videoWidth,
+                    height = video.videoHeight;
+
+                if (!ctx) {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx = canvas.getContext('2d');
+                }
+
+                ctx.drawImage(video, 0, 0, width, height); // add to the video tag
+
+                var data = ctx.getImageData(0, 0, width, height);
+
+                worker.postMessage(data);
+            }
+
+            worker.onmessage = function(event) {
+                if (callback) {
+                    callback.call(this, event.data);
+                }
+                // check again
+                requestAnimationFrame(process);
+            };
+            process()
+        }
+
+        video = document.getElementsByTagName('video')[0];
+
+        navigator.webkitGetUserMedia({audio:false, video : true}, function(stream) {
+            // success
+
+            video.src = webkitURL.createObjectURL(stream);
+            video.play();
+            // start looking for qrcodes
+            checkForQRCodes(video, function(message) {
+                if (message) {
+                    document.getElementById('message').innerText = message;
+                    console.log(">>>", message)
+                }
+
+            });
+        },function() {
+            // failure
+            console.log("Failed");
+        });
+    } else {
+        alert("Your browser does not support " + (navigator.webkitGetUserMedia ? "" : "getUserMedia") +
+                (typeof window.requestAnimationFrame === 'function' ? "" : ", window.requestAnimationFrame") +
+                (typeof window.Worker === 'function' ? "" : " and Web Workers")
+        );
+
+    }
+</script>
+</body>
+</html>
