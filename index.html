@@ -58,7 +58,9 @@
             // success
 
             video.src = webkitURL.createObjectURL(stream);
-            video.play();
+            setTimeout(function() {
+                video.play();
+            }, 0);
             // start looking for qrcodes
             checkForQRCodes(video, function(message) {
                 if (message) {
